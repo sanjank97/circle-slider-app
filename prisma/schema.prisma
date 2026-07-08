@@ -32,3 +32,16 @@ model Session {
   refreshToken        String?
   refreshTokenExpires DateTime?
 }
+
+model Circle {
+  id         Int      @id @default(autoincrement())
+  shop       String
+  title      String
+  image      String
+  linkType   String
+  linkValue  String
+  sortOrder  Int      @default(0)
+  status     Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
