@@ -10,6 +10,8 @@ import { useAppBridge } from "@shopify/app-bridge-react";
 import { authenticate } from "../shopify.server";
 import { boundary } from "@shopify/shopify-app-react-router/server";
 import CircleTable from "../components/dashboard/CircleTable";
+import DashboardHeader from "../components/dashboard/DashboardHeader";
+import EmptyState from "../components/dashboard/EmptyState";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
@@ -175,16 +177,18 @@ export default function Index() {
   const generateProduct = () => fetcher.submit({}, { method: "POST" });
 
   return (
-    <s-page heading="Circle Slider Dashboard">
-      <s-button
-          slot="primary-action"
-          href="/app/circles/new"
-        >
-          Add Circle
-      </s-button>
+    <s-page>
+      <DashboardHeader
+        title="Circle Slider"
+        description="Manage your circular image buttons."
+      />
 
       <s-section heading="Circle List">
-         <CircleTable circles={circles} />
+        {circles.length === 0 ? (
+          <EmptyState />
+        ) : (
+          <CircleTable circles={circles} />
+        )}
       </s-section>
     </s-page>
   );

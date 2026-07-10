@@ -1,23 +1,37 @@
 import { Form } from "react-router";
+import type { Circle } from "../../types/circle";
+import CircleImageUpload from "./CircleImageUpload";
+type CircleFormProps = {
+  circle?: Circle
+};
 
-export default function CircleForm() {
+export default function CircleForm({
+  circle,
+}: CircleFormProps) {
   return (
-    <Form  method="post">
+    <Form
+        method="post"
+        encType="multipart/form-data"
+      >
 
       <s-section heading="Circle Information">
 
-        <s-text-field
+       <s-text-field
           label="Title"
           name="title"
+          value={circle?.title ?? ""}
         />
-
+        <br />
+        <CircleImageUpload
+          image={circle?.image}
+        />
         <br />
 
         <s-select
-          label="Link Type"
-          name="linkType"
-          value=""
-        >
+            label="Link Type"
+            name="linkType"
+            value={circle?.linkType ?? ""}
+          >
           <s-option value="">Select Link Type</s-option>
           <s-option value="product">Product</s-option>
           <s-option value="collection">Collection</s-option>
@@ -26,17 +40,18 @@ export default function CircleForm() {
 
         <br />
 
-        <s-text-field
+       <s-text-field
           label="Link"
           name="linkValue"
+          value={circle?.linkValue ?? ""}
         />
 
         <br />
 
-        <s-number-field
+       <s-number-field
           label="Sort Order"
           name="sortOrder"
-          value="0"
+          value={String(circle?.sortOrder ?? 0)}
         />
 
         <br />
@@ -44,7 +59,7 @@ export default function CircleForm() {
         <s-checkbox
           label="Active"
           name="status"
-          checked
+          checked={circle?.status ?? true}
         />
 
         <br />

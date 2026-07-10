@@ -8,6 +8,7 @@ import { redirect } from "react-router";
 import prisma from "../db.server";
 import { authenticate } from "../shopify.server";
 import CircleForm from "../components/circle/CircleForm";
+import { uploadImageToShopify } from "../services/shopify-file.server";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   await authenticate.admin(request);
@@ -15,16 +16,29 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 };
 
 export const action = async ({ request }: ActionFunctionArgs) => {
-    console.log("Action called");
-    const { session } = await authenticate.admin(request);
+    console.log("Action called =====================");
+    const { session, admin } = await authenticate.admin(request);
     const formData = await request.formData();
     const title = (formData.get("title") as string).trim();
     const linkType = (formData.get("linkType") as string).trim();
     const linkValue = (formData.get("linkValue") as string).trim();
-
     const sortOrder = Number(formData.get("sortOrder") || 0);
-
     const status = formData.get("status") === "on";
+    const image = formData.get("image");
+
+   const file = image as File;
+    
+   const imageUrl =
+    await uploadImageToShopify(
+      admin,
+      file,
+    );
+
+   console.log("imageurl====",imageUrl);
+
+
+
+
 
     if (!title) {
         // return {
@@ -56,7 +70,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
         data: {
             shop: session.shop,
             title,
-            image: "", // temporary
+            image: imageUrl,// temporary
             linkType,
             linkValue,
             sortOrder,

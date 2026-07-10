@@ -1,9 +1,6 @@
-type Circle = {
-  id: number;
-  title: string;
-  linkType: string;
-  status: boolean;
-};
+import CircleRow from "./CircleRow";
+
+import type { Circle } from "../../types/circle";
 
 type CircleTableProps = {
   circles: Circle[];
@@ -12,44 +9,40 @@ type CircleTableProps = {
 export default function CircleTable({
   circles,
 }: CircleTableProps) {
-  if (circles.length === 0) {
-    return (
-      <s-section heading="Circle List">
-        <s-paragraph>No circles found.</s-paragraph>
-      </s-section>
-    );
-  }
-
   return (
-    <s-section heading="Circle List">
+    <s-box
+      borderWidth="base"
+      borderRadius="base"
+    >
+      {/* Header */}
+
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "80px 2fr 1fr 2fr 120px 180px",
+          gap: "16px",
+          padding: "16px",
+          fontWeight: "600",
+          borderBottom: "1px solid #e1e3e5",
+          alignItems: "center",
+        }}
+      >
+        <span>Image</span>
+        <span>Title</span>
+        <span>Link Type</span>
+        <span>Link</span>
+        <span>Status</span>
+        <span>Actions</span>
+      </div>
+
+      {/* Rows */}
+
       {circles.map((circle) => (
-        <s-box
+        <CircleRow
           key={circle.id}
-          padding="base"
-          borderWidth="base"
-          borderRadius="base"
-        >
-          <s-stack direction="inline" gap="large">
-
-            <s-stack direction="block">
-              <s-text font-weight="bold">
-                {circle.title}
-              </s-text>
-
-              <s-text tone="subdued">
-                {circle.linkType}
-              </s-text>
-            </s-stack>
-
-            <s-spacer />
-
-            <s-badge tone={circle.status ? "success" : "critical"}>
-              {circle.status ? "Active" : "Inactive"}
-            </s-badge>
-
-          </s-stack>
-        </s-box>
+          circle={circle}
+        />
       ))}
-    </s-section>
+    </s-box>
   );
 }
