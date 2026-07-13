@@ -1,5 +1,6 @@
 import prisma from "../db.server";
 import { authenticate } from "../shopify.server";
+import { deleteShopifyFile } from "../services/shopify-file.server";
 
 import { redirect } from "react-router";
 
@@ -10,7 +11,7 @@ export const action = async ({
   params,
 }: ActionFunctionArgs) => {
 
-    const { session } = await authenticate.admin(request);
+    const { session, admin } = await authenticate.admin(request);
     const id = Number(params.id);
 
     const existingCircle = await prisma.circle.findFirst({
@@ -24,6 +25,17 @@ export const action = async ({
         throw new Response("Circle not found", {
             status: 404,
         });
+    }
+
+    if (existingCircle.imageFileId) {
+        const result = await deleteShopifyFile(
+        admin,
+        existingCircle.imageFileId,
+        );
+
+        if (result.data.fileDelete.userErrors.length > 0) {
+          throw new Error("Failed to delete Shopify file");
+        }
     }
 
     await prisma.circle.delete({

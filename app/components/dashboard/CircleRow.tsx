@@ -9,6 +9,7 @@ type CircleRowProps = {
 export default function CircleRow({
   circle,
 }: CircleRowProps) {
+  console.log("circle.imageFileId", circle.imageFileId);
   return (
     <div
       style={{
@@ -24,8 +25,10 @@ export default function CircleRow({
 
       <div>
         {circle.image && (
+
         <img
             src={circle.image}
+            
             alt={circle.title}
             width={50}
             height={50}

@@ -3,47 +3,55 @@ export async function uploadImageToShopify(
   file: File,
 ) {
 
-    //step: 1 stagedUploadsCreate -> Temporary Upload URL
-    const stagedUploadResponse = await admin.graphql(
-      `#graphql
-      mutation stagedUploadsCreate($input: [StagedUploadInput!]!) {
-        stagedUploadsCreate(input: $input) {
-          stagedTargets {
-            url
-            resourceUrl
-            parameters {
-              name
-              value
-            }
-          }
-          userErrors {
-            field
-            message
+  // =====================================================
+  // Step 1
+  // Create Staged Upload
+  // =====================================================
+
+  const stagedUploadResponse = await admin.graphql(
+    `#graphql
+    mutation stagedUploadsCreate($input: [StagedUploadInput!]!) {
+      stagedUploadsCreate(input: $input) {
+        stagedTargets {
+          url
+          resourceUrl
+          parameters {
+            name
+            value
           }
         }
+        userErrors {
+          field
+          message
+        }
       }
-      `,
-      {
-        variables: {
-          input: [
-            {
-              filename: file.name,
-              mimeType: file.type,
-              fileSize: String(file.size),
-              resource: "IMAGE",
-              httpMethod: "POST",
-            },
-          ],
-        },
+    }
+    `,
+    {
+      variables: {
+        input: [
+          {
+            filename: file.name,
+            mimeType: file.type,
+            fileSize: String(file.size),
+            resource: "IMAGE",
+            httpMethod: "POST",
+          },
+        ],
       },
-    );
+    },
+  );
 
-   const stagedUploadJson = await stagedUploadResponse.json();
-
-  //Step:2 Upload binary file to Shopify -> resourceURL
+  const stagedUploadJson =
+    await stagedUploadResponse.json();
 
   const stagedTarget =
     stagedUploadJson.data.stagedUploadsCreate.stagedTargets[0];
+
+  // =====================================================
+  // Step 2
+  // Upload Binary File
+  // =====================================================
 
   const uploadFormData = new FormData();
 
@@ -74,10 +82,12 @@ export async function uploadImageToShopify(
     );
   }
 
+  // =====================================================
+  // Step 3
+  // Create Shopify File
+  // =====================================================
 
-   //Step:3 fileCreate ->CDN URL
-
-   const fileCreateResponse = await admin.graphql(
+  const fileCreateResponse = await admin.graphql(
     `#graphql
     mutation fileCreate($files: [FileCreateInput!]!) {
       fileCreate(files: $files) {
@@ -108,13 +118,70 @@ export async function uploadImageToShopify(
         ],
       },
     },
-);
+  );
 
+  const fileCreateJson =
+    await fileCreateResponse.json();
 
+  const imageFileId =
+    fileCreateJson.data.fileCreate.files[0].id;
+
+  const imageUrl =
+    await waitForImageReady(
+      admin,
+      imageFileId,
+    );
+
+  return {
+    imageUrl,
+    imageFileId,
+  };
+}
+
+/* =======================================================
+   Delete Shopify File
+======================================================= */
+
+export async function deleteShopifyFile(
+  admin: any,
+  fileId: string,
+) {
+  const response = await admin.graphql(
+    `#graphql
+    mutation fileDelete($fileIds: [ID!]!) {
+      fileDelete(fileIds: $fileIds) {
+        deletedFileIds
+
+        userErrors {
+          field
+          message
+        }
+      }
+    }
+    `,
+    {
+      variables: {
+        fileIds: [fileId],
+      },
+    },
+  );
+
+  const json = await response.json();
+  console.log(
+    "Delete Shopify File:",
+    json,
+  );
+
+  return json;
+}
+
+/* =======================================================
+   Wait Until Shopify Generates CDN URL
+======================================================= */
 
 async function waitForImageReady(
   admin: any,
-  mediaId: string,
+  imageFileId: string,
 ) {
   for (let i = 0; i < 10; i++) {
     const response = await admin.graphql(
@@ -131,7 +198,7 @@ async function waitForImageReady(
       `,
       {
         variables: {
-          id: mediaId,
+          id: imageFileId,
         },
       },
     );
@@ -150,13 +217,37 @@ async function waitForImageReady(
     );
   }
 
-  throw new Error("Image processing timeout.");
+  throw new Error(
+    "Image processing timeout."
+  );
 }
 
-const fileCreateJson = await fileCreateResponse.json();
-const mediaId = fileCreateJson.data.fileCreate.files[0].id;
-const imageUrl = await waitForImageReady(admin, mediaId);
-return imageUrl;
 
+export async function getProductById(
+  admin: any,
+  productId: string,
+) {
+  const response = await admin.graphql(
+    `#graphql
+    query getProduct($id: ID!) {
+      product(id: $id) {
+        id
+        title
 
+        featuredImage {
+          url
+        }
+      }
+    }
+    `,
+    {
+      variables: {
+        id: productId,
+      },
+    },
+  );
+
+  const json = await response.json();
+
+  return json.data.product;
 }

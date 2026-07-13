@@ -1,6 +1,10 @@
 import { Form } from "react-router";
+import { useState } from "react";
 import type { Circle } from "../../types/circle";
 import CircleImageUpload from "./CircleImageUpload";
+import ProductLinkField from "./link-fields/ProductLinkField";
+import CollectionLinkField from "./link-fields/CollectionLinkField";
+import CustomUrlField from "./link-fields/CustomUrlField";
 type CircleFormProps = {
   circle?: Circle
 };
@@ -8,6 +12,15 @@ type CircleFormProps = {
 export default function CircleForm({
   circle,
 }: CircleFormProps) {
+
+
+ const [selectedLinkType, setSelectedLinkType] =
+  useState(
+    circle?.linkType ?? "",
+  );
+
+  console.log("selectedLinkType", selectedLinkType);
+
   return (
     <Form
         method="post"
@@ -27,24 +40,39 @@ export default function CircleForm({
         />
         <br />
 
-        <s-select
-            label="Link Type"
-            name="linkType"
-            value={circle?.linkType ?? ""}
-          >
+       <s-select
+          label="Link Type"
+          name="linkType"
+          value={selectedLinkType}
+          onInput={(event: any) =>
+            setSelectedLinkType(
+              event.target.value,
+            )
+          }
+        >
           <s-option value="">Select Link Type</s-option>
           <s-option value="product">Product</s-option>
           <s-option value="collection">Collection</s-option>
           <s-option value="custom">Custom URL</s-option>
         </s-select>
-
-        <br />
-
-       <s-text-field
-          label="Link"
-          name="linkValue"
-          value={circle?.linkValue ?? ""}
+  
+     {selectedLinkType === "product" && (
+        <ProductLinkField
+          value={circle?.linkValue}
+          productTitle={circle?.productTitle}
+          productImage={circle?.productImage}
         />
+      )}
+
+      {selectedLinkType === "collection" && (
+        <CollectionLinkField />
+      )}
+
+      {selectedLinkType === "custom" && (
+        <CustomUrlField
+          value={circle?.linkValue}
+        />
+      )}
 
         <br />
 

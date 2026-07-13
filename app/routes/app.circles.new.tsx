@@ -25,14 +25,15 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     const sortOrder = Number(formData.get("sortOrder") || 0);
     const status = formData.get("status") === "on";
     const image = formData.get("image");
-
-   const file = image as File;
+    const file = image as File;
     
-   const imageUrl =
-    await uploadImageToShopify(
-      admin,
-      file,
-    );
+ const {
+    imageUrl,
+    imageFileId,
+  } = await uploadImageToShopify(
+    admin,
+    file,
+  );
 
    console.log("imageurl====",imageUrl);
 
@@ -71,6 +72,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
             shop: session.shop,
             title,
             image: imageUrl,// temporary
+            imageFileId,
             linkType,
             linkValue,
             sortOrder,

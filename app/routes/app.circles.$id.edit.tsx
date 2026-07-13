@@ -7,13 +7,14 @@ import CircleForm from "../components/circle/CircleForm";
 
 import { redirect } from "react-router";
 import type { ActionFunctionArgs } from "react-router";
+import { uploadImageToShopify, deleteShopifyFile,getProductById } from "../services/shopify-file.server";
 
 export const loader = async ({
   request,
   params,
 }: LoaderFunctionArgs) => {
   // Authenticate merchant
-  const { session } = await authenticate.admin(request);
+ const {session,admin} = await authenticate.admin(request);
 
   // URL parameter
   const id = Number(params.id);
@@ -33,9 +34,24 @@ export const loader = async ({
     });
   }
 
+  // console.log("Circle Link Value:", circle.linkValue);
+  // console.log("Type:", typeof circle.linkValue);
+
+  const product = await getProductById(
+    admin,
+    circle.linkValue,
+  );
+
+  console.log("product===",product);
+
   return {
-    circle,
+    circle: {
+      ...circle,
+      productTitle: product?.title,
+      productImage: product?.featuredImage?.url,
+    },
   };
+
 };
 
 
@@ -43,11 +59,12 @@ export const action = async ({
   request,
   params,
 }: ActionFunctionArgs) => {
-  const { session } = await authenticate.admin(request);
+  const { session, admin} = await authenticate.admin(request);
 
   const id = Number(params.id);
 
   const formData = await request.formData();
+  const image = formData.get("image");
 
   const title = formData.get("title") as string;
   const linkType = formData.get("linkType") as string;
@@ -69,12 +86,37 @@ export const action = async ({
         });
     }
 
+  let imageUrl =existingCircle.image;
+
+  let imageFileId = existingCircle.imageFileId;
+
+if (image instanceof File && image.size > 0) {
+  const oldImageFileId = existingCircle.imageFileId;
+  const uploaded =
+    await uploadImageToShopify(
+      admin,
+      image,
+    );
+
+  imageUrl = uploaded.imageUrl;
+  imageFileId = uploaded.imageFileId;
+
+    if (oldImageFileId) {
+    await deleteShopifyFile(
+      admin,
+      oldImageFileId,
+    );
+  }
+}
+
     await prisma.circle.update({
     where: {
         id: existingCircle.id,
     },
     data: {
         title,
+        image: imageUrl,
+        imageFileId,
         linkType,
         linkValue,
         sortOrder,
