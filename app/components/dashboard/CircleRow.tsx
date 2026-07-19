@@ -3,7 +3,7 @@ import { Form, Link } from "react-router";
 import type { Circle } from "../../types/circle";
 
 type CircleRowProps = {
-  circle: Circle;
+  circle: Circle ;
 };
 
 export default function CircleRow({

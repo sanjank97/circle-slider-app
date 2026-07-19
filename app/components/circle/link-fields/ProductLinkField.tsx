@@ -1,123 +1,139 @@
-import { useState } from "react";
 import { useAppBridge } from "@shopify/app-bridge-react";
-
-
-type SelectedProduct = {
-  id: string;
-  title: string;
-  image?: string;
-};
+import type { SelectedProduct } from "../../../types/product";
 
 type ProductLinkFieldProps = {
-  value?: string;
-  productTitle?: string;
-  productImage?: string;
+  selectedProduct: SelectedProduct | null;
+  onChange: (
+    product: SelectedProduct | null,
+  ) => void;
 };
 
 export default function ProductLinkField({
-  value,
-  productTitle,
-  productImage,
+  selectedProduct,
+  onChange,
 }: ProductLinkFieldProps) {
+  const shopify = useAppBridge();
 
-const shopify = useAppBridge();
-const [selectedProduct, setSelectedProduct] =
-  useState<SelectedProduct | null>(
-    value
-      ? {
-          id: value,
-          title: productTitle ?? "",
-          image: productImage,
-        }
-      : null,
-  );
-
- async function openProductPicker() {
-  
+  async function openProductPicker() {
     try {
-        const selection = await shopify.resourcePicker({
-            type: "product",
-            multiple: false,
-            action: "select",
+      const selection =
+        await shopify.resourcePicker({
+          type: "product",
+          multiple: false,
+          action: "select",
         });
 
-        if (!selection || selection.length === 0) {
-            return;
-        }
+      if (
+        !selection ||
+        selection.length === 0
+      ) {
+        return;
+      }
 
-       const product = selection[0];
+      const product = selection[0];
 
-       setSelectedProduct({
-            id: product.id,
-            title: product.title,
-            image: product.images?.[0]?.originalSrc,
-        });
-
+      onChange({
+        id: product.id,
+        title: product.title,
+        image:
+          product.images?.[0]
+            ?.originalSrc,
+      });
     } catch (error) {
-        console.error("Picker Error:", error);
+      console.error(
+        "Picker Error:",
+        error,
+      );
     }
-
-  
   }
 
-    return (
+  function removeProduct() {
+    onChange(null);
+  }
+
+  return (
     <s-section heading="Product">
-        {selectedProduct ? (
+      {selectedProduct ? (
         <s-box
-            borderWidth="base"
-            borderRadius="base"
-            padding="base"
+          borderWidth="base"
+          borderRadius="base"
+          padding="base"
         >
-            <div
+          <div
             style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "16px",
+              display: "flex",
+              alignItems: "center",
+              gap: "16px",
             }}
-            >
+          >
             {selectedProduct.image && (
-                <img
+              <img
                 src={selectedProduct.image}
-                alt={selectedProduct.title}
+                alt={
+                  selectedProduct.title
+                }
                 style={{
-                    width: "70px",
-                    height: "70px",
-                    objectFit: "cover",
-                    borderRadius: "8px",
-                    border: "1px solid #e1e3e5",
+                  width: "70px",
+                  height: "70px",
+                  objectFit: "cover",
+                  borderRadius: "8px",
+                  border:
+                    "1px solid #e1e3e5",
                 }}
-                />
+              />
             )}
 
             <div style={{ flex: 1 }}>
-                <s-text font-weight="bold">
+              <s-text
+                font-weight="bold"
+              >
                 {selectedProduct.title}
-                </s-text>
+              </s-text>
 
-                <div style={{ marginTop: "10px" }}>
+              <div
+                style={{
+                  display: "flex",
+                  gap: "10px",
+                  marginTop: "10px",
+                }}
+              >
                 <s-button
-                    variant="secondary"
-                    onClick={openProductPicker}
+                  variant="secondary"
+                  onClick={
+                    openProductPicker
+                  }
                 >
-                    Change Product
+                  Change Product
                 </s-button>
-                 <input
-                    type="hidden"
-                    name="linkValue"
-                    value={selectedProduct?.id ?? ""}
-                 />
-                </div>
+
+                <s-button
+                  variant="critical"
+                  onClick={
+                    removeProduct
+                  }
+                >
+                  Remove
+                </s-button>
+              </div>
             </div>
-            </div>
+          </div>
         </s-box>
-        ) : (
+      ) : (
         <s-button
-            variant="secondary"
-            onClick={openProductPicker}
+          variant="secondary"
+          onClick={openProductPicker}
         >
-            Select Product
+          Select Product
         </s-button>
-        )}
+      )}
+
+      <input
+        type="hidden"
+        name="linkValue"
+        value={
+          selectedProduct?.id ?? ""
+        }
+      />
     </s-section>
-    );
+  );
 }

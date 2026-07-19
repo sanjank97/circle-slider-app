@@ -1,6 +1,6 @@
 import prisma from "../db.server";
 import { authenticate } from "../shopify.server";
-import { deleteShopifyFile } from "../services/shopify-file.server";
+import { deleteShopifyFile } from "../services/shopify-resource.server";
 
 import { redirect } from "react-router";
 

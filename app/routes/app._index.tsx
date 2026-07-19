@@ -1,11 +1,11 @@
 import prisma from "../db.server";
-import { useEffect } from "react";
+import { useEffect,useState,useRef} from "react";
 import type {
   ActionFunctionArgs,
   HeadersFunction,
   LoaderFunctionArgs,
 } from "react-router";
-import { useFetcher, useLoaderData } from "react-router";
+import { useFetcher, useLoaderData, useNavigate,useLocation } from "react-router";
 import { useAppBridge } from "@shopify/app-bridge-react";
 import { authenticate } from "../shopify.server";
 import { boundary } from "@shopify/shopify-app-react-router/server";
@@ -13,183 +13,201 @@ import CircleTable from "../components/dashboard/CircleTable";
 import DashboardHeader from "../components/dashboard/DashboardHeader";
 import EmptyState from "../components/dashboard/EmptyState";
 
+const PAGE_SIZE = 2;
 export const loader = async ({ request }: LoaderFunctionArgs) => {
+  const url = new URL(request.url);
+  const search = url.searchParams.get("q")?.trim() ?? "";
+  const page = Number(
+    url.searchParams.get("page") ?? "1",
+  );
+
+  const skip = (page - 1) * PAGE_SIZE;
   const { session } = await authenticate.admin(request);
-  const circles = await prisma.circle.findMany({
-    where: {
-      shop: session.shop,
+
+  const where = {
+    shop: session.shop,
+    title: {
+      contains: search,
     },
+  };
+  
+ const circles = await prisma.circle.findMany({
+    where,
     orderBy: {
       sortOrder: "asc",
     },
+    skip,
+    take: PAGE_SIZE,
   });
+
+
+  const totalCircles = await prisma.circle.count({
+    where,
+  });
+
+  const totalPages = Math.ceil(
+    totalCircles / PAGE_SIZE
+  );
+
 
   console.log("Current Shop:", session.shop);
   console.log("Circles:", circles);
+  console.log("search", search);
+  console.log('page', page);
+  console.log('skip', skip);
+   console.log('totalPages', totalPages);
+  console.log('totalCircles', totalCircles);
 
   return {
     circles,
-  };
-
-};
-
-export const action = async ({ request }: ActionFunctionArgs) => {
-  const { admin } = await authenticate.admin(request);
-  const color = ["Red", "Orange", "Yellow", "Green"][
-    Math.floor(Math.random() * 4)
-  ];
-  const response = await admin.graphql(
-    `#graphql
-      mutation populateProduct($product: ProductCreateInput!) {
-        productCreate(product: $product) {
-          product {
-            id
-            title
-            handle
-            status
-            variants(first: 10) {
-              edges {
-                node {
-                  id
-                  price
-                  barcode
-                  createdAt
-                }
-              }
-            }
-            demoInfo: metafield(namespace: "$app", key: "demo_info") {
-              jsonValue
-            }
-          }
-        }
-      }`,
-    {
-      variables: {
-        product: {
-          title: `${color} Snowboard`,
-          metafields: [
-            {
-              namespace: "$app",
-              key: "demo_info",
-              value: "Created by React Router Template",
-            },
-          ],
-        },
-      },
-    },
-  );
-  const responseJson = await response.json();
-
-  const product = responseJson.data!.productCreate!.product!;
-  const variantId = product.variants.edges[0]!.node!.id!;
-
-  const variantResponse = await admin.graphql(
-    `#graphql
-    mutation shopifyReactRouterTemplateUpdateVariant($productId: ID!, $variants: [ProductVariantsBulkInput!]!) {
-      productVariantsBulkUpdate(productId: $productId, variants: $variants) {
-        productVariants {
-          id
-          price
-          barcode
-          createdAt
-        }
-      }
-    }`,
-    {
-      variables: {
-        productId: product.id,
-        variants: [{ id: variantId, price: "100.00" }],
-      },
-    },
-  );
-
-  const variantResponseJson = await variantResponse.json();
-
-  const metaobjectResponse = await admin.graphql(
-    `#graphql
-    mutation shopifyReactRouterTemplateUpsertMetaobject($handle: MetaobjectHandleInput!, $metaobject: MetaobjectUpsertInput!) {
-      metaobjectUpsert(handle: $handle, metaobject: $metaobject) {
-        metaobject {
-          id
-          handle
-          title: field(key: "title") {
-            jsonValue
-          }
-          description: field(key: "description") {
-            jsonValue
-          }
-        }
-        userErrors {
-          field
-          message
-        }
-      }
-    }`,
-    {
-      variables: {
-        handle: {
-          type: "$app:example",
-          handle: "demo-entry",
-        },
-        metaobject: {
-          fields: [
-            { key: "title", value: "Demo Entry" },
-            {
-              key: "description",
-              value:
-                "This metaobject was created by the Shopify app template to demonstrate the metaobject API.",
-            },
-          ],
-        },
-      },
-    },
-  );
-
-  const metaobjectResponseJson = await metaobjectResponse.json();
-
-  return {
-    product: responseJson!.data!.productCreate!.product,
-    variant:
-      variantResponseJson!.data!.productVariantsBulkUpdate!.productVariants,
-    metaobject:
-      metaobjectResponseJson!.data!.metaobjectUpsert!.metaobject,
+    search,
+    page,
+    totalPages,
+    totalCircles,
   };
 };
+
+
 
 export default function Index() {
 
-  const { circles } = useLoaderData<typeof loader>();
+ const {
+  circles,
+  search,
+  page,
+  totalPages,
+  totalCircles,
+} = useLoaderData<typeof loader>();
 
-  const fetcher = useFetcher<typeof action>();
+
+  const startRecord =
+  totalCircles === 0
+    ? 0
+    : (page - 1) * PAGE_SIZE + 1;
+
+  const endRecord = Math.min(
+    page * PAGE_SIZE,
+    totalCircles
+  );
+  const [searchValue, setSearchValue] = useState(search);
+  const previousSearch = useRef(search);
+  const navigate = useNavigate();
+
+const handlePrevious = () => {
+  if (page <= 1) return;
+
+  const params = new URLSearchParams(location.search);
+  params.set("page", String(page - 1));
+
+    navigate(`${location.pathname}?${params.toString()}`);
+  };
+
+  const handleNext = () => {
+    if (page >= totalPages) return;
+
+    const params = new URLSearchParams(location.search);
+    params.set("page", String(page + 1));
+
+    navigate(`${location.pathname}?${params.toString()}`);
+  };
 
 
-  const shopify = useAppBridge();
-  const isLoading =
-    ["loading", "submitting"].includes(fetcher.state) &&
-    fetcher.formMethod === "POST";
+  const location = useLocation();
 
   useEffect(() => {
-    if (fetcher.data?.product?.id) {
-      shopify.toast.show("Product created");
+    if (previousSearch.current === searchValue) {
+      return;
     }
-  }, [fetcher.data?.product?.id, shopify]);
+    const timeout = setTimeout(() => {
+    const params = new URLSearchParams(location.search);
 
-  const generateProduct = () => fetcher.submit({}, { method: "POST" });
+      if (searchValue.trim()) {
+        params.set("q", searchValue.trim());
+        params.set("page", "1");
+      } else {
+        params.delete("q");
+        params.set("page", "1");
+      }
 
+     let newUrl = location.pathname;
+      if (params.toString()) {
+        newUrl += "?" + params.toString();
+      } else {
+        newUrl += "";
+      }
+
+      if (location.pathname + location.search !== newUrl) {
+        previousSearch.current = searchValue;
+        navigate(newUrl);
+      }
+    }, 300);
+
+    return () => clearTimeout(timeout);
+
+  }, [searchValue, navigate,location]);
+
+  console.log({
+  page,
+  totalPages,
+  totalCircles,
+});
+ 
   return (
+    
     <s-page>
-      <DashboardHeader
-        title="Circle Slider"
-        description="Manage your circular image buttons."
-      />
+        <DashboardHeader
+          title="Circles"
+          description="Manage your storefront circles."
+          buttonLabel="Add Circle"
+          buttonLink="/app/circles/new"
+        />
 
-      <s-section heading="Circle List">
-        {circles.length === 0 ? (
-          <EmptyState />
-        ) : (
-          <CircleTable circles={circles} />
-        )}
-      </s-section>
+        <s-section>
+              <s-text-field
+                label="Search"
+                placeholder="Search circles..."
+                value={searchValue}
+               onInput={(event: any) => {
+                    setSearchValue(event.target.value);
+                  }}
+                />
+        </s-section>
+        <s-section heading="Circle List">
+          {circles.length === 0 ? (
+            <EmptyState />
+          ) : (
+            <>
+              <CircleTable circles={circles} />
+
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  marginTop: "16px",
+                }}
+              >
+                <s-button
+                  disabled={page <= 1}
+                  onClick={handlePrevious}
+                >
+                  Previous
+                </s-button>
+
+               <span>
+                Showing {startRecord}–{endRecord} of {totalCircles} circles
+              </span>
+
+                <s-button
+                  disabled={page >= totalPages}
+                  onClick={handleNext}
+                >
+                  Next
+                </s-button>
+              </div>
+            </>
+          )}
+        </s-section>
     </s-page>
   );
 }

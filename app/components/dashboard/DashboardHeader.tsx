@@ -3,11 +3,15 @@ import { Link } from "react-router";
 type DashboardHeaderProps = {
   title: string;
   description: string;
+  buttonLabel?: string;
+  buttonLink?: string;
 };
 
 export default function DashboardHeader({
   title,
   description,
+  buttonLabel,
+  buttonLink,
 }: DashboardHeaderProps) {
   return (
     <s-section>
@@ -26,9 +30,11 @@ export default function DashboardHeader({
           </s-text>
         </div>
 
-        <Link to="/app/circles/new">
-          <s-button >Add Circle</s-button>
-        </Link>
+        {buttonLabel && buttonLink && (
+            <Link to={buttonLink}>
+              <s-button>{buttonLabel}</s-button>
+            </Link>
+          )}
       </div>
     </s-section>
   );
